@@ -5,13 +5,17 @@ import java.io.InputStream
 import java.net.URL
 import java.nio.charset.Charset
 
-abstract class Box {
-    open fun exists(path: String, options: FileSystemOptions? = null): Boolean {
-        return resolve(path, options).exists()
+
+abstract class Box(
+    val isPubliclyVisible: Boolean = false,
+    private val options: FileSystemOptions = FileSystemOptions()
+) {
+    open fun exists(path: String): Boolean {
+        return resolve(path).exists()
     }
 
-    open fun get(path: String, charset: Charset = Charsets.UTF_8, options: FileSystemOptions? = null): String? {
-        return readStream(path, options)?.let {
+    open fun get(path: String, charset: Charset = Charsets.UTF_8): String? {
+        return readStream(path)?.let {
             return String(it.readAllBytes(), charset)
         }
     }
@@ -22,8 +26,8 @@ abstract class Box {
         }
     }
 
-    open fun readStream(path: String, options: FileSystemOptions? = null): InputStream? {
-        return resolve(path, options).content.inputStream
+    open fun readStream(path: String): InputStream? {
+        return resolve(path).content.inputStream
     }
 
     open fun readStream(file: FileObject): InputStream? {
@@ -33,32 +37,38 @@ abstract class Box {
     open fun put(
         path: String,
         contents: String,
-        charset: Charset = Charsets.UTF_8,
-        options: FileSystemOptions? = null
+        charset: Charset = Charsets.UTF_8
     ): URL {
-        return resolve(path, options).let {
-            put(it, contents, charset)
+        val url = resolve(path).use {
+            write(it, contents, charset)
             it.url
         }
+
+        if (isPubliclyVisible) {
+            makePublic(url)
+        }
+        return url
     }
 
-    open fun put(path: String, stream: InputStream, options: FileSystemOptions? = null): URL {
-        return resolve(path, options).let {
+    open fun put(path: String, stream: InputStream): URL {
+        val url = resolve(path).use {
             stream.transferTo(it.content.outputStream)
-            it.close()
             it.url
         }
+        if (isPubliclyVisible) {
+            makePublic(url)
+        }
+        return url
     }
 
     open fun append(
         path: String,
         data: String,
-        charset: Charset = Charsets.UTF_8,
-        options: FileSystemOptions? = null
+        charset: Charset = Charsets.UTF_8
     ): URL {
-        return resolve(path, options).let {
+        return resolve(path).use {
             val contents = if (it.exists()) combine(get(it), data) else data
-            put(it, contents, charset)
+            write(it, contents, charset)
             it.url
         }
     }
@@ -66,59 +76,55 @@ abstract class Box {
     open fun prepend(
         path: String,
         data: String,
-        charset: Charset = Charsets.UTF_8,
-        options: FileSystemOptions? = null
+        charset: Charset = Charsets.UTF_8
     ): URL {
-        return resolve(path, options).let {
+        return resolve(path).use {
             it.content.getOutputStream(true).write(data.toByteArray(charset))
-            it.close()
             it.url
         }
     }
 
-    open fun touch(path: String, options: FileSystemOptions? = null): URL {
-        return resolve(path, options).let {
+    open fun touch(path: String): URL {
+        return resolve(path).use {
             if (it.exists()) {
                 it.content.lastModifiedTime = System.currentTimeMillis()
             } else {
                 it.createFile()
             }
-            it.close()
             it.url
         }
     }
 
-    open fun resolve(path: String, options: FileSystemOptions? = null): FileObject {
-        val manager = VFS.getManager()
-        val fullPath = resolvePath(path)
-
-        return options?.let {
-            manager.resolveFile(fullPath, it)
-        } ?: manager.resolveFile(fullPath)
-    }
-
-    open fun delete(path: String, vararg paths: String, options: FileSystemOptions? = null) {
-        resolve(path, options).delete()
+    open fun delete(path: String, vararg paths: String) {
+        resolve(path).delete()
         paths.forEach {
-            resolve(it, options).delete()
+            resolve(it).delete()
         }
     }
 
-    open fun deleteFolder(path: String, options: FileSystemOptions? = null) {
-        resolve(path, options).deleteAll()
+    open fun deleteFolder(path: String) {
+        resolve(path).deleteAll()
     }
 
     open fun copy(
         from: String,
         to: String,
-        fileSelector: FileSelector = AllFileSelector(),
-        options: FileSystemOptions? = null
+        fileSelector: FileSelector = AllFileSelector()
     ) {
-        resolve(to, options).copyFrom(resolve(from, options), fileSelector)
+        resolve(to).copyFrom(resolve(from), fileSelector)
     }
 
-    open fun move(from: String, to: String, options: FileSystemOptions? = null) {
-        resolve(from, options).moveTo(resolve(to, options))
+    open fun move(from: String, to: String) {
+        resolve(from).moveTo(resolve(to))
+    }
+
+    open fun resolve(path: String, options: FileSystemOptions): FileObject {
+        val fullPath = resolvePath(path)
+        return VFS.getManager().resolveFile(fullPath, options)
+    }
+
+    open fun resolve(path: String): FileObject {
+        return resolve(path, options)
     }
 
     abstract fun resolvePath(path: String): String
@@ -132,8 +138,10 @@ abstract class Box {
         } ?: ""
     }
 
-    private fun put(file: FileObject, contents: String, charset: Charset = Charsets.UTF_8) {
+    private fun write(file: FileObject, contents: String, charset: Charset = Charsets.UTF_8) {
         file.content.outputStream.write(contents.toByteArray(charset))
         file.close()
     }
+
+    open fun makePublic(url: URL) {}
 }

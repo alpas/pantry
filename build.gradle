@@ -16,6 +16,8 @@ dependencies {
     compile project(":framework")
     compile 'org.apache.commons:commons-vfs2:2.6.0'
     compile 'org.apache.tika:tika-core:1.23'
+    implementation 'com.github.abashev:vfs-s3:4.1.0'
+    compile 'javax.xml.bind:jaxb-api:2.4.0-b180830.0359'
 }
 
 compileKotlin {

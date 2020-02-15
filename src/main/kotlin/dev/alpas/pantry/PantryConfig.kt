@@ -8,7 +8,9 @@ open class PantryConfig(private val env: Environment) : Config {
     private val boxes = mutableMapOf<String, Lazy<Box>>()
 
     init {
-        addBox(defaultBoxName, lazy { FileBox(env.storagePath("app", "web")) })
+        addBox(defaultBoxName, lazy { FileBox(env) })
+        addBox("do", lazy { DOBox(env) })
+        addBox("s3", lazy { S3Box(env) })
     }
 
     fun addBox(name: String, box: Lazy<Box>) {

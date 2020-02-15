@@ -24,8 +24,19 @@ data class UploadedFile(
         return storeIn(null, path, filename)
     }
 
+    fun storePublicly(path: String, filename: String? = null): URL {
+        return storePubliclyIn(null, path, filename)
+    }
+
+
     fun storeIn(boxName: String?, path: String, filename: String? = null): URL {
         val name = filename ?: secureRandomString(32)
         return config.box(boxName).put("$path/$name.$guessedExtensions", contentStream)
+    }
+
+    fun storePubliclyIn(boxName: String?, path: String, filename: String? = null): URL {
+        return storeIn(boxName, path, filename).also {
+            config.box(boxName).makePublic(it)
+        }
     }
 }
