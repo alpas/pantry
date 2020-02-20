@@ -3,7 +3,7 @@ plugins {
 }
 
 group 'dev.alpas'
-version '1.0-SNAPSHOT'
+version '0.1.0-SNAPSHOT'
 
 repositories {
     jcenter()
@@ -13,7 +13,8 @@ repositories {
 
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
-    compile project(":framework")
+//    compile project(":framework")
+    implementation "dev.alpas:framework:0.15.0"
     compile 'org.apache.commons:commons-vfs2:2.6.0'
     compile 'org.apache.tika:tika-core:1.23'
     implementation 'com.github.abashev:vfs-s3:4.1.0'

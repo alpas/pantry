@@ -3,8 +3,17 @@ package dev.alpas.pantry
 import dev.alpas.secureRandomString
 import org.apache.tika.Tika
 import java.io.InputStream
-import java.net.URL
+import java.net.URI
 
+/**
+ * A class that represents an uploaded file, which is ready to be stored in a Pantry [Box].
+ *
+ * @param contentStream The input stream of the file.
+ * @param contentType The content type of the file.
+ * @param filename The name of this file.
+ * @param size The size of this file.
+ * @param config A [PantryConfig] for storing it in a proper Pantry [Box].
+ */
 data class UploadedFile(
     val contentStream: InputStream,
     val contentType: String,
@@ -12,31 +21,98 @@ data class UploadedFile(
     val size: Long,
     val config: PantryConfig
 ) {
-    val guessedMime by lazy {
+    /**
+     * The mime of this file as detected by the [Tika] library.
+     */
+    val detectedMime by lazy {
         Tika().detect(contentStream)
     }
 
+    /**
+     * The guessed extension of this file based on its mime. The extension is derived from its mime after slashing
+     * everything before the last /. For an example, if the mime is "image/png" the extension becomes "png".
+     */
     val guessedExtensions by lazy {
-        guessedMime.substringAfterLast("/")
+        detectedMime.substringAfterLast("/")
     }
 
-    fun store(path: String, filename: String? = null): URL {
+    /**
+     * Store a file at [path] as [filename]. If the name is
+     * left out or null, a secure random name will be generated.
+     *
+     * @param path The destination to store the file.
+     * @param filename The name to be used for storing. If left out, a random name will be generated.
+     *
+     * @return The destination of the file stored.
+     */
+    fun store(path: String, filename: String? = null): URI {
         return storeIn(null, path, filename)
     }
 
-    fun storePublicly(path: String, filename: String? = null): URL {
+    /**
+     * Store a file publicly at [path] as [filename]. If the name is
+     * left out or null, a secure random name will be generated.
+     *
+     * @param path The destination to store the file.
+     * @param filename The name to be used for storing. If left out, a random name will be generated.
+     *
+     * @return The destination of the file stored.
+     */
+    fun storePublicly(path: String, filename: String? = null): URI {
         return storePubliclyIn(null, path, filename)
     }
 
-
-    fun storeIn(boxName: String?, path: String, filename: String? = null): URL {
+    /**
+     * Store a file at [path] in the given [boxName] as [filename]. The box is fetched from [config].
+     * If the box name is null, the default box will be used. If the name is left out or null,
+     * a secure random name will be generated.
+     *
+     * @param boxName The name of the box for storing the file.
+     * @param path The destination to store the file.
+     * @param filename The name to be used for storing. If left out, a random name will be generated.
+     *
+     * @return The destination of the file stored.
+     */
+    fun storeIn(boxName: String?, path: String = "", filename: String? = null): URI {
         val name = filename ?: secureRandomString(32)
         return config.box(boxName).put("$path/$name.$guessedExtensions", contentStream)
     }
 
-    fun storePubliclyIn(boxName: String?, path: String, filename: String? = null): URL {
-        return storeIn(boxName, path, filename).also {
-            config.box(boxName).makePublic(it)
+    /**
+     * Store a file publicly at [path] in the given [boxName] as [filename]. The box is fetched
+     * from [config]. If the box name is null, the default box will be used. If the name is
+     * left out or null, a secure random name will be generated.
+     *
+     * @param boxName The name of the box for storing the file.
+     * @param path The destination to store the file.
+     * @param filename The name to be used for storing. If left out, a random name will be generated.
+     *
+     * @return The destination of the file stored.
+     */
+    fun storePubliclyIn(boxName: String?, path: String, filename: String? = null): URI {
+        return storeIn(boxName, path, filename).let {
+            val box = config.box(boxName)
+            // If the box is publicly visible, this file should have been made public already
+            if (!box.isPubliclyVisible) {
+                box.makePublic(it)
+            }
+            it
         }
+    }
+
+    /**
+     * Store a file from [fromPath] at [fromBoxName] to [toPath] at [toBoxName].
+     *
+     * @param fromBoxName The source box name.
+     * @param toBoxName The destination box name.
+     * @param fromPath The source path.
+     * @param toPath The destination path.
+     *
+     * @return The location of the destination file.
+     */
+    fun move(fromBoxName: String, toBoxName: String, fromPath: String, toPath: String): URI {
+        val fromFile = config.box(fromBoxName).resolve("$fromPath/$filename")
+        val toBox = config.box(toBoxName)
+        return toBox.put("$toPath/$filename", fromFile.content.inputStream)
     }
 }

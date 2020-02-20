@@ -2,6 +2,16 @@ package dev.alpas.pantry
 
 import dev.alpas.Environment
 
+/**
+ * A box that points to a DigitalOcean space. If [url] is set, it overrides [region] and [bucket].
+ *
+ * @param key The API Key
+ * @param secret The API secret
+ * @param region The region to be used. Set to null by default.
+ * @param bucket The bucket to be used. Set to null by default.
+ * @param url The url to be used. Set to null by default. If set, it overrides other values.
+ * @param isPubliclyVisibility Whether this box's contents should be public or not.
+ */
 open class DOBox(
     private val key: String,
     private val secret: String,
