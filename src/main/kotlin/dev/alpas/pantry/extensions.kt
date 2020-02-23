@@ -24,7 +24,7 @@ fun Container.pantry(name: String? = null): Box {
  * @return An [UploadedFile] if this call has multipart form data otherwise null.
  */
 fun HttpCall.file(name: String): UploadedFile? {
-    return if (isMultipartFormData) files(name).first() else null
+    return if (isMultipartFormData) files(name).firstOrNull() else null
 }
 
 /**
