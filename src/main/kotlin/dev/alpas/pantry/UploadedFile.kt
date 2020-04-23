@@ -70,12 +70,14 @@ data class UploadedFile(
      * @param boxName The name of the box for storing the file.
      * @param path The destination to store the file.
      * @param filename The name to be used for storing. If left out, a random name will be generated.
+     * @param withoutGuessedExtension If the file should be saved without the guessed extension. Default is false
      *
      * @return The destination of the file stored.
      */
-    fun storeIn(boxName: String?, path: String = "", filename: String? = null): URI {
+    fun storeIn(boxName: String?, path: String = "", filename: String? = null, withoutGuessedExtension: Boolean = false): URI {
         val name = filename ?: secureRandomString(32)
-        return config.box(boxName).put("$path/$name.$guessedExtensions", contentStream)
+        val extension = if(withoutGuessedExtension) "" else ".$guessedExtensions"
+        return config.box(boxName).put("$path/$name$extension", contentStream)
     }
 
     /**
