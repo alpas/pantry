@@ -1,5 +1,2 @@
-//include ':framework'
-//project(':framework').projectDir = new File('../../alpas/framework')
-
 rootProject.name = 'pantry'
-
+//includeBuild('../../alpas/framework')
